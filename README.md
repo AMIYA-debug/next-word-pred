@@ -1,4 +1,4 @@
-# LSTM Text Prediction Web Application
+# LSTM Text Prediction 
 
 This project implements a Long Short-Term Memory (LSTM) neural network trained on Shakespeare's Macbeth text to predict the next word in a sentence. It includes both a Jupyter notebook for model training and a Flask web application for inference.
 
