@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LSTM Next Word Predictor</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #b10404 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 50px;
+      max-width: 700px;
+      width: 100%;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    h1 {
+      color: #333;
+      font-size: 2.8em;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #000000 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: #000000;
+      font-size: 1.1em;
+      font-weight: 300;
+    }
+
+    .form-group {
+      margin-bottom: 25px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+      color: #333;
+      font-weight: 600;
+      font-size: 1em;
+    }
+
+    textarea {
+      width: 100%;
+      padding: 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-size: 1em;
+      resize: vertical;
+      min-height: 100px;
+      transition: all 0.3s;
+      line-height: 1.6;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #000001;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    button {
+      background: linear-gradient(135deg, #9a0909 0%, #764ba2 100%);
+      color: white;
+      padding: 14px 40px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.05em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      width: 100%;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .results {
+      margin-top: 40px;
+      padding-top: 30px;
+      border-top: 2px solid #e0e0e0;
+      display: none;
+    }
+
+    .results.show {
+      display: block;
+      animation: slideUp 0.4s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .result-item {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .result-label {
+      color: #666;
+      font-size: 0.9em;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .result-text {
+      color: #333;
+      font-size: 1.1em;
+      margin-bottom: 8px;
+      line-height: 1.6;
+    }
+
+    .prediction-box {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 1.3em;
+      font-weight: 600;
+      animation: slideIn 0.4s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .error {
+      color: #d32f2f;
+      padding: 15px;
+      background: #ffebee;
+      border-radius: 8px;
+      margin-top: 20px;
+      border-left: 4px solid #d32f2f;
+      display: none;
+    }
+
+    .error.show {
+      display: block;
+      animation: slideUp 0.4s ease-out;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .loading.show {
+      display: block;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #000000;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading-text {
+      color: #ea66e3;
+      font-weight: 600;
+    }
+
+    .char-count {
+      color: #999;
+      font-size: 0.85em;
+      margin-top: 5px;
+    }
+
+    .info-box {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 25px;
+      color: #1976d2;
+      font-size: 0.95em;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .form-row .form-group {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
+    select {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 1em;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: #5a6490;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .predictions-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .prediction-tag {
+      background: linear-gradient(135deg, #04050a 0%, #764ba2 100%);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 20px;
+      font-size: 0.95em;
+      font-weight: 500;
+      animation: slideIn 0.4s ease-out;
+    }
+  </style>
+</head>
+
+<body style="color: black;">
+  <div class="container">
+    <div class="header">
+      <h1 > Next Word Predictor</h1>
+      <p class="subtitle">Powered by LSTM Neural Network</p>
+    </div>
+
+    <div class="info-box">
+       Enter a sentence or phrase, and the AI will predict the next words based on the context.
+    </div>
+
+    <form id="textForm">
+      <div class="form-group">
+        <label for="inputText">Enter your text:</label>
+        <textarea id="inputText" placeholder="Example: When shall we three meet again in..." required></textarea>
+        <div class="char-count"><span id="charCount">0</span> characters</div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="numWords">Number of Words to Predict:</label>
+          <select id="numWords" required>
+            <option value="1">1 word</option>
+            <option value="2">2 words</option>
+            <option value="3">3 words</option>
+            <option value="4">4 words</option>
+            <option value="5" selected>5 words</option>
+            <option value="6">6 words</option>
+            <option value="7">7 words</option>
+            <option value="8">8 words</option>
+            <option value="9">9 words</option>
+            <option value="10">10 words</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" id="submitBtn">Predict Words</button>
+    </form>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p class="loading-text">Analyzing text...</p>
+    </div>
+
+    <div class="results" id="results">
+      <div class="result-item">
+        <div class="result-label">📝 Your Input:</div>
+        <div class="result-text" id="inputDisplay"></div>
+      </div>
+
+      <div class="result-item">
+        <div class="result-label">✨ Predicted Words:</div>
+        <div class="predictions-container" id="predictionDisplay"></div>
+      </div>
+    </div>
+
+    <div class="error" id="error"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById('textForm');
+    const inputText = document.getElementById('inputText');
+    const numWords = document.getElementById('numWords');
+    const charCount = document.getElementById('charCount');
+    const submitBtn = document.getElementById('submitBtn');
+    const loading = document.getElementById('loading');
+    const results = document.getElementById('results');
+    const inputDisplay = document.getElementById('inputDisplay');
+    const predictionDisplay = document.getElementById('predictionDisplay');
+    const errorDiv = document.getElementById('error');
+
+    // Update character count
+    inputText.addEventListener('input', (e) => {
+      charCount.textContent = e.target.value.length;
+    });
+
+    // Form submission
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const text = inputText.value.trim();
+      if (!text) {
+        showError('Please enter some text');
+        return;
+      }
+
+      // Hide previous results and errors
+      errorDiv.classList.remove('show');
+      results.classList.remove('show');
+
+      // Show loading
+      loading.classList.add('show');
+      submitBtn.disabled = true;
+
+      try {
+        const response = await fetch('/predict', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text: text,
+            num_words: parseInt(numWords.value)
+          })
+        });
+
+        const data = await response.json();
+
+        console.log('Response:', data);
+        console.log('Response status:', response.ok);
+        console.log('Predictions:', data.predictions);
+
+        if (response.ok) {
+          // Display input
+          inputDisplay.textContent = data.input;
+
+          // Display predictions as tags
+          predictionDisplay.innerHTML = '';
+
+          if (data.predictions && Array.isArray(data.predictions) && data.predictions.length > 0) {
+            data.predictions.forEach(word => {
+              const tag = document.createElement('div');
+              tag.className = 'prediction-tag';
+              tag.textContent = String(word).trim();
+              predictionDisplay.appendChild(tag);
+            });
+            results.classList.add('show');
+          } else {
+            console.error('Invalid predictions format:', data.predictions);
+            showError('No predictions received from server');
+            return;
+          }
+        } else {
+          throw new Error(data.error || 'Server returned an error');
+        }
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        loading.classList.remove('show');
+        submitBtn.disabled = false;
+      }
+    });
+
+    function showError(message) {
+      errorDiv.innerHTML = '❌ ' + message;
+      errorDiv.classList.add('show');
+    }
+
+    // Set focus on load
+    inputText.focus();
+  </script>
+</body>
+
+</html>
